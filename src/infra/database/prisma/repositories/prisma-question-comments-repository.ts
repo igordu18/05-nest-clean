@@ -5,6 +5,8 @@ import { QuestionCommentsRepository } from '@/domain/forum/application/repositor
 import { QuestionComment } from '@/domain/forum/enterprise/entities/question-comment'
 import { PrismaService } from '../prisma.service'
 import { PrismaQuestionCommentMapper } from '../mappers/prisma-question-comment-mapper'
+import { CommentWithAuthor } from '@/domain/forum/enterprise/entities/value-objects/comment-with-author'
+import { PrismaCommentWithAuthorMapper } from '../mappers/prisma-comment-with-author-mapper'
 
 @Injectable()
 export class PrismaQuestionCommentsRepository
@@ -44,6 +46,27 @@ export class PrismaQuestionCommentsRepository
     return questionComment.map(PrismaQuestionCommentMapper.toDomain)
   }
 
+  async findManyByQuestionIdWithAuthor(
+    questionId: string,
+    { page }: PaginationParams,
+  ): Promise<CommentWithAuthor[]> {
+    const questionComment = await this.prisma.comment.findMany({
+      where: {
+        questionId,
+      },
+      include: {
+        author: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 20,
+      skip: (page - 1) * 20,
+    })
+
+    return questionComment.map(PrismaCommentWithAuthorMapper.toDomain)
+  }
+
   async create(questionComment: QuestionComment): Promise<void> {
     const data = PrismaQuestionCommentMapper.toPersistence(questionComment)
 
@@ -55,7 +78,7 @@ export class PrismaQuestionCommentsRepository
   async delete(questionComment: QuestionComment): Promise<void> {
     const data = PrismaQuestionCommentMapper.toPersistence(questionComment)
 
-    await this.prisma.question.delete({
+    await this.prisma.comment.delete({
       where: {
         id: data.id,
       },
